@@ -1,0 +1,320 @@
+---
+title: "caoston-2"
+author: "Hussin. Almustafa"
+date: '`r Sys.Date()`'
+output:
+  html_document: default
+  pdf_document: default
+---
+  
+  
+  
+  
+#         *Medical Cost Personal Dataset*
+
+
+# Introduction :
+
+For this project, I will be applying machine learning techniques on the/ Medical Cost Personal Dataset/The data are downloadable from  [The link to the  data set](https://www.kaggle.com/datasets/mirichoi0218/insurance/download?datasetVersionNumber=1) 
+
+the data explain the cost of a small sample of USA population Medical Insurance Cost based on some attributes depicted on "Content".[my github repo](https://github.com/halmustafa/Capston-/tree/master)
+  
+ 
+*the Goal of the  project : * 
+The purpose of this project is to predict the
+medical expenses . 
+   
+ 
+
+ 
+
+#  Methods:
+
+after downloading the data i,m going to explore it, extract the Information from it , and cleaning the data ,then    prepare the data for analysis ,Visualization  ,then start  Training and resampling several models.
+
+
+
+
+##1-data loding: 
+
+ 
+```{r}
+library(glmnet)
+library(dplyr)
+library(caretEnsemble)
+library(kernlab)
+library(tidyverse)
+library(reshape2)
+library(RColorBrewer)
+library(data.table)
+library(caret)
+ 
+```
+#  2- Data Exploration:
+
+```{r}
+set.seed(123)
+##Reading Data
+dat <- read.csv("C:/Users/Almustafa/Documents/med.csv")
+
+str(dat)
+```
+
+we can see the data   is a data frame  with 1338 observations and 7  variables, the variable - charges - as response variable 
+
+
+### The column descriptions look like this:
+
+
+
+age:  age of primary beneficiary
+
+sex:  female, male
+
+bmi:  Body mass index, providing an        understanding of body, weights that are relatively high or low relative to height, objective index of body weight (kg / m ^ 2) 
+
+children:  Number of children 
+
+smoker: Smoking Yes or No 
+
+region: the beneficiary's residential area in           the US .
+charges: Individual medical costs billed by               health insurance.
+
+
+## check the summary of variables :
+
+```{r}
+summary(dat)
+```
+
+
+we can see that there  is a difference between mean & median in the variable  charges 
+
+
+
+
+##Let’s see the distribution of charges
+
+
+
+```{r}
+hist(dat$charges,col = "yellow")
+```
+
+the plot shows that the majority of people in our data have yearly medical expenses between 0 - 15,000$  .
+
+ 
+# look at the categorical variable distribution:
+
+```{r}
+
+table(dat$sex)
+table(dat$smoker)
+table(dat$region)
+
+```
+
+*find the relationship among variables *
+
+```{r}
+cor(dat[c("age","bmi","children","charges")])
+```
+
+there is  a perfect correlation between a  variable .There appears to be a weak positive association between age and BMI, which means that with age, body mass tends to increase. There is also a moderately positive relationship between age and expenses, BMI and expenses, and children and expenses. These associations indicate that with increasing age, body mass and number of children, the expected cost of insurance increases
+
+
+```{r}
+library(ggplot2)
+library(GGally)
+ggcorr(dat, label = T, color = "black", size = 4)+
+  labs(title = "Correlation ",
+       subtitle = "Age, BMI & Children on Charged ")
+  
+```
+the plot shows that age has the highest correlation with charges 
+
+
+
+
+
+
+
+# 3- data cleaning :
+
+```{r}
+library(janitor)
+sum(is.na(dat))
+ 
+
+```
+there  is  no  Na in our data,  
+
+  
+removing empty rows and col,s:
+
+```{r}
+dat <-dat %>% remove_empty(whic=c("rows"))
+dat <-dat %>% remove_empty(whic=c("cols"))
+
+```
+# data visualisation :
+
+
+```{r}
+ggplot(dat, aes(x = as.factor(children), y = charges, color = as.factor(children))) +
+  geom_boxplot() +
+  labs(title = "Medical Costs By Number Of Children",
+      x = "Number of Children") +
+    theme(plot.title = element_text(hjust = 0.5),
+          legend.position = "none")
+  
+```
+
+
+```{r}
+   dat%>% 
+  ggplot(aes(charges,fill=sex,binwidth=30))+
+  geom_histogram()+
+  labs(title = "Medical Costs By sex")
+   
+  
+   
+     
+```
+
+
+
+```{r}
+  dat%>% 
+  ggplot(aes(charges,fill=smoker, binwidth=30))+
+  geom_histogram()+
+  labs(title = "Medical Costs By smock")
+```
+Smokers  have more charges than non-smokers.
+
+
+
+```{r}
+ggplot(dat, aes(x = as.factor(region), y = charges, color = as.factor(region))) +
+  geom_boxplot() +
+  labs(title = "Medical Costs by region",
+      x = "region") +
+    theme(plot.title = element_text(hjust = 0.5),
+          legend.position = "none")
+```
+
+
+
+
+```{r}
+
+
+ dat%>% 
+  ggplot(aes(charges,bmi,color= smoker,fill=smoker))+
+  geom_point()+
+  labs(title = "Medical Costs By bmi")
+```
+
+
+# modeling :
+
+
+```{r}
+library(caret)
+set.seed(2002)
+y<- dat$charges
+
+test_index <- createDataPartition(y, times = 1, p = 0.2, list = FALSE)
+
+dat_train <- dat %>% slice(-test_index)
+dat_test <- dat  %>% slice(test_index)
+
+
+```
+# model-1 Linear Regression:
+
+
+```{r}
+m <- mean(dat_train$charges)
+m
+```
+Our root mean squared error is:
+
+
+```{r}
+sqrt(mean((m - dat_test$charges)^2))
+```
+using the function lm()To fit a linear regression model to data  
+
+
+```{r}
+fit <- lm(charges~ ., data = dat_train)
+fit$coef
+```
+
+
+
+ 
+ 
+
+
+
+
+```{r}
+ y_hat <- predict(fit, dat_test)
+sqrt(mean((y_hat - dat_test$charges)^2))
+```
+
+We can see that this does indeed provide an improvement over our guessing approach.
+
+
+
+ 
+
+
+
+
+ 
+ 
+## model-2 Random Forest :
+
+
+
+```{r}
+rf <- train(charges ~., data = dat_train, method = "rf")
+rf
+```
+
+
+*Variable importance plot from random forest*
+  
+  
+```{r}
+varimp_RF <- varImp(rf)
+plot(varimp_RF, main = "dat  Variable Importance (Random Forest)")
+```
+  
+  
+
+we  use the random forest to predict on our test data.  
+
+```{r}
+fit <- predict(rf,dat_test)
+fit[1:8]
+```
+
+
+ 
+
+ 
+
+by comparing the models we can see that we get better performance with higher R-Squared and lower MAE.   using random forest algorithm .
+
+
+
+ 
+
+
+
+
+ 
